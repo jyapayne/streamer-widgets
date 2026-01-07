@@ -7,7 +7,7 @@ const bgImg  = document.getElementById("bgImg");
 const titleEl = document.getElementById("title");
 const albumEl = document.getElementById("album");
 const artistEl = document.getElementById("artist");
-const pill = document.getElementById("statusPill");
+const playingIndicator = document.getElementById("playingIndicator");
 
 let lastKey = "";
 let lastTitle = "";
@@ -104,9 +104,9 @@ function applyNowPlaying(data){
       lastArtist = artist;
     }
 
-    // Update status
-    pill.textContent = playing ? "Playing" : "Paused";
-    pill.classList.toggle("playing", playing);
+    // Update playing indicator
+    playingIndicator.classList.add("visible");
+    playingIndicator.classList.toggle("paused", !playing);
 
     const hasArt = !!data.has_art;
     artWrap.classList.toggle("placeholder", !hasArt);

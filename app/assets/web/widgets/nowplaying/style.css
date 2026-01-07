@@ -132,14 +132,86 @@ html, body {
   z-index: 2;
 }
 
+/* Playing indicator - overlayed on album art */
+.playing-indicator{
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  z-index: 10;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.playing-indicator.visible{
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Equalizer bars */
+.eq-bars{
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  height: 12px;
+}
+
+.eq-bars span{
+  width: 3px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 1px;
+  animation: eq-bounce 0.8s ease-in-out infinite;
+}
+
+.eq-bars span:nth-child(1){
+  height: 8px;
+  animation-delay: 0s;
+}
+
+.eq-bars span:nth-child(2){
+  height: 12px;
+  animation-delay: 0.2s;
+}
+
+.eq-bars span:nth-child(3){
+  height: 6px;
+  animation-delay: 0.4s;
+}
+
+@keyframes eq-bounce{
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+
+/* Paused state */
+.playing-indicator.paused .eq-bars span{
+  animation: none;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.playing-indicator.paused .eq-bars span:nth-child(1){ height: 6px; }
+.playing-indicator.paused .eq-bars span:nth-child(2){ height: 6px; }
+.playing-indicator.paused .eq-bars span:nth-child(3){ height: 6px; }
+
 .meta{
   position: relative;
   z-index: 2;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-self: center;
   min-width: 0;
-  gap: 3px;
+  gap: 4px;
   padding-right: clamp(8px, calc(var(--w) * 0.02), 14px);
   flex: 1;
 }
@@ -178,29 +250,6 @@ html, body {
   font-style: italic;
 }
 
-.statusRow{
-  margin-top: 4px;
-}
-
-.pill{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: .25px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.18);
-  background: rgba(0,0,0,.22);
-  color: rgba(255,255,255,.80);
-  text-transform: uppercase;
-}
-
-.pill.playing{
-  background: rgba(0,0,0,.18);
-  color: rgba(255,255,255,.90);
-}
 
 .bubble-container,
 .bubble-overlay{

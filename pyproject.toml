@@ -1,0 +1,39 @@
+[project]
+name = "streamer-widgets"
+version = "0.1.0"
+description = "Local one-port OBS widget host (Now Playing, etc.) with WebSockets and a tray UI."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "aiohttp",
+  "winsdk",
+  "pystray",
+  "pillow",
+  "pyperclip",
+  "pywin32; platform_system == 'Windows'",
+]
+
+[project.scripts]
+streamer-widgets = "app.__main__:main"
+
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[dependency-groups]
+build = [
+  "pyinstaller",
+]
+
+[tool.uv]
+# Use the existing virtual environment at .venv (uv will also create it if missing).
+managed = true
+
+

@@ -1,0 +1,3 @@
+"""Streamer widgets host application."""
+
+

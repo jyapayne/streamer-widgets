@@ -1,0 +1,125 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Streamer Widgets</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f8fafc;
+      color: #334155;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .container {
+      width: 100%;
+      max-width: 640px;
+      margin: 40px 20px;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      overflow: hidden;
+    }
+    header {
+      background: #0f172a;
+      color: white;
+      padding: 24px 32px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 600;
+    }
+    .subtitle {
+      margin-top: 8px;
+      font-size: 14px;
+      color: #94a3b8;
+    }
+    .content {
+      padding: 32px;
+    }
+    h2 {
+      font-size: 18px;
+      margin: 0 0 16px;
+      color: #1e293b;
+    }
+    .widget-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .widget-item {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 16px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+    .widget-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .widget-name {
+      font-weight: 600;
+      color: #0f172a;
+      text-decoration: none;
+    }
+    .widget-name:hover {
+      text-decoration: underline;
+    }
+    .widget-url-row {
+      display: flex;
+      align-items: center;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 13px;
+      color: #475569;
+      overflow-x: auto;
+    }
+    .footer {
+      border-top: 1px solid #e2e8f0;
+      padding: 16px 32px;
+      background: #f8fafc;
+      font-size: 13px;
+      color: #64748b;
+      text-align: center;
+    }
+    code {
+      font-family: inherit;
+      background: rgba(0,0,0,0.05);
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Streamer Widgets</h1>
+      <div class="subtitle">Local OBS overlay server</div>
+    </header>
+    <div class="content">
+      <h2>Available Widgets</h2>
+      <ul class="widget-list">
+        {{WIDGET_LIST}}
+      </ul>
+    </div>
+    <div class="footer">
+      Server running at <code>{{HOSTPORT}}</code>
+    </div>
+  </div>
+</body>
+</html>

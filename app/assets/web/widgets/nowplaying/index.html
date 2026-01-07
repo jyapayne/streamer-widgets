@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Now Playing</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="wrap">
+    <div id="card" class="card hidden">
+      <div class="art" id="artWrap">
+        <div class="bubble-container" id="bubbleContainer"></div>
+        <div class="bubble-overlay"></div>
+        <img id="artImg" alt="Album art" />
+      </div>
+
+      <div class="meta">
+        <div id="title" class="title">—</div>
+        <div class="sub">
+          <span id="artist" class="artist">—</span>
+          <span class="dot">•</span>
+          <span id="album" class="album">—</span>
+        </div>
+        <div class="statusRow">
+          <span id="statusPill" class="pill">Paused</span>
+        </div>
+      </div>
+
+      <div class="bg">
+        <div id="bgBubbles" class="bg-bubbles hidden"></div>
+        <img id="bgImg" alt="" />
+      </div>
+      <div class="bgShade"></div>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

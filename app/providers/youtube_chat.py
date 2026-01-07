@@ -68,6 +68,49 @@ class YouTubeChatClient:
         if self.session:
             await self.session.close()
 
+    async def send_message(self, message: str) -> bool:
+        """
+        Send a chat message to the live chat.
+        
+        Returns True if the message was sent successfully, False otherwise.
+        """
+        if not self.session or not self.live_chat_id:
+            print("YouTube: Cannot send message - not connected to live chat")
+            return False
+        
+        tokens = await self.state.get_auth_tokens(Platform.YOUTUBE)
+        if not tokens or not tokens.access_token:
+            print("YouTube: Cannot send message - not authenticated")
+            return False
+        
+        url = f"{self.API_BASE}/liveChat/messages"
+        params = {"part": "snippet"}
+        headers = {
+            "Authorization": f"Bearer {tokens.access_token}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "snippet": {
+                "liveChatId": self.live_chat_id,
+                "type": "textMessageEvent",
+                "textMessageDetails": {
+                    "messageText": message
+                }
+            }
+        }
+        
+        try:
+            async with self.session.post(url, params=params, headers=headers, json=payload) as resp:
+                if resp.status in (200, 201):
+                    return True
+                else:
+                    error = await resp.text()
+                    print(f"YouTube: Error sending message: {resp.status} - {error}")
+                    return False
+        except Exception as e:
+            print(f"YouTube: Error sending message: {e}")
+            return False
+
     async def _find_active_broadcast(self, access_token: str) -> None:
         """Find the user's active live broadcast automatically."""
         if not self.session:

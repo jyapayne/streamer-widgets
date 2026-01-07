@@ -100,6 +100,7 @@ class AuthTokens:
     refresh_token: Optional[str] = None
     expires_at: Optional[datetime] = None
     scope: List[str] = field(default_factory=list)
+    username: Optional[str] = None  # The authenticated user's username
 
     def is_expired(self) -> bool:
         if not self.expires_at:
@@ -112,6 +113,7 @@ class AuthTokens:
             "refresh_token": self.refresh_token,
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
             "scope": self.scope,
+            "username": self.username,
         }
 
 

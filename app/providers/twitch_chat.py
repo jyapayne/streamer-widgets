@@ -76,6 +76,14 @@ class TwitchChatClient:
         self.global_badges: dict[str, str] = {}
         self.channel_badges: dict[str, str] = {}
         self.channel_id: Optional[str] = None
+        
+        # Authentication state
+        self.is_authenticated: bool = False
+        
+        # Authenticated user info (populated from GLOBALUSERSTATE/USERSTATE)
+        self.user_color: Optional[str] = None
+        self.user_badges: list[ChatBadge] = []
+        self.user_display_name: Optional[str] = None
 
     async def start(self) -> None:
         """Start the IRC connection."""
@@ -99,12 +107,18 @@ class TwitchChatClient:
 
             # Authenticate
             if tokens and tokens.access_token:
+                # Use the stored username, or fall back to channel name
+                nick = tokens.username or self.channel
                 await self.ws.send_str(f"PASS oauth:{tokens.access_token}")
-                await self.ws.send_str(f"NICK {self.channel}")
+                await self.ws.send_str(f"NICK {nick}")
+                self.is_authenticated = True
+                print(f"Twitch: Connected with authentication as {nick}")
             else:
-                # Anonymous connection
+                # Anonymous connection (read-only)
                 await self.ws.send_str("PASS SCHMOOPIIE")
                 await self.ws.send_str(f"NICK justinfan{asyncio.get_event_loop().time():.0f}")
+                self.is_authenticated = False
+                print(f"Twitch: Connected anonymously (read-only, cannot send messages)")
 
             # Request capabilities for tags (emotes, badges, color, etc.)
             await self.ws.send_str("CAP REQ :twitch.tv/tags twitch.tv/commands")
@@ -128,6 +142,100 @@ class TwitchChatClient:
         if self.session:
             await self.session.close()
 
+    async def send_message(self, message: str, echo: bool = True) -> bool:
+        """
+        Send a chat message to the channel.
+        
+        Returns True if the message was sent successfully, False otherwise.
+        Requires authenticated connection (not anonymous).
+        
+        Args:
+            message: The message to send
+            echo: Whether to locally echo the message (default True)
+        """
+        if not self.ws or not self.running:
+            print("Twitch: Cannot send message - not connected")
+            return False
+        
+        # Check if we're connected anonymously - can't send messages
+        if not self.is_authenticated:
+            print("Twitch: Cannot send message - connected anonymously. Please authenticate via /config and restart.")
+            return False
+        
+        try:
+            # Send PRIVMSG to channel
+            await self.ws.send_str(f"PRIVMSG #{self.channel} :{message}")
+            print(f"Twitch: Sent message to #{self.channel}")
+            
+            # Local echo - add our own message to the chat so we can see it
+            if echo:
+                await self._echo_sent_message(message)
+            
+            return True
+        except Exception as e:
+            print(f"Twitch: Error sending message: {e}")
+            return False
+
+    async def send_message_no_echo(self, message: str) -> bool:
+        """Send a message without local echo (used for multi-platform sends)."""
+        return await self.send_message(message, echo=False)
+
+    async def _echo_sent_message(self, message: str) -> None:
+        """Add our own sent message to the chat display (local echo)."""
+        tokens = await self.state.get_auth_tokens(Platform.TWITCH)
+        if not tokens:
+            return
+        
+        username = tokens.username or self.channel
+        display_name = self.user_display_name or username
+        
+        # Determine roles from badges
+        roles = [UserRole.VIEWER]
+        badge_names = [b.name for b in self.user_badges]
+        if "broadcaster" in badge_names:
+            roles.append(UserRole.BROADCASTER)
+        if "moderator" in badge_names:
+            roles.append(UserRole.MODERATOR)
+        if "vip" in badge_names:
+            roles.append(UserRole.VIP)
+        if "subscriber" in badge_names or "founder" in badge_names:
+            roles.append(UserRole.SUBSCRIBER)
+        
+        # Create a user object for ourselves using stored info
+        user = ChatUser(
+            id=username,
+            username=username,
+            display_name=display_name,
+            platform=Platform.TWITCH,
+            color=self.user_color,  # Use our actual color from Twitch
+            roles=roles,
+            badges=self.user_badges.copy(),  # Use our actual badges
+        )
+        
+        # Check for /me action
+        is_action = message.startswith("/me ")
+        if is_action:
+            message = message[4:]
+        
+        # Create the message
+        msg_id = f"sent_{username}_{datetime.now().timestamp()}"
+        
+        # Parse emotes from our message
+        emotes = await self._parse_emotes(message, {})
+        
+        chat_msg = ChatMessage(
+            id=msg_id,
+            platform=Platform.TWITCH,
+            user=user,
+            message=message,
+            timestamp=datetime.now(),
+            emotes=emotes,
+            is_action=is_action,
+        )
+        
+        # Add to state (broadcasts to all connected clients)
+        await self.state.add_chat_message(chat_msg)
+
     async def _message_loop(self) -> None:
         """Main loop to receive and process IRC messages."""
         if not self.ws:
@@ -149,9 +257,84 @@ class TwitchChatClient:
                 await self.ws.send_str("PONG :tmi.twitch.tv")
             return
 
+        # Handle NOTICE messages (errors, warnings from Twitch)
+        if "NOTICE" in raw:
+            # Extract the notice message
+            notice_match = re.search(r"NOTICE [#\w]+ :(.+)", raw)
+            if notice_match:
+                notice_text = notice_match.group(1)
+                print(f"Twitch NOTICE: {notice_text}")
+            else:
+                print(f"Twitch NOTICE (raw): {raw}")
+            return
+
+        # Handle USERSTATE (sent after successful message - contains our user info)
+        if "USERSTATE" in raw:
+            self._parse_user_state(raw)
+            return
+
+        # Handle GLOBALUSERSTATE (sent on connect - contains our global user info)
+        if "GLOBALUSERSTATE" in raw:
+            self._parse_user_state(raw)
+            return
+
+        # Log other important messages for debugging
+        if any(x in raw for x in ["JOIN", "PART"]):
+            # Normal connection messages, ignore
+            return
+
+        # Log connection/room info
+        if "ROOMSTATE" in raw:
+            # Parse room state to check settings
+            if "followers-only=" in raw:
+                fo_match = re.search(r"followers-only=(-?\d+)", raw)
+                if fo_match:
+                    fo_val = int(fo_match.group(1))
+                    if fo_val >= 0:
+                        print(f"Twitch: Channel is in followers-only mode ({fo_val} minutes)")
+                    else:
+                        print(f"Twitch: Channel followers-only mode is OFF")
+            return
+
         # Parse PRIVMSG (chat messages)
         if "PRIVMSG" in raw:
             await self._parse_privmsg(raw)
+
+    def _parse_user_state(self, raw: str) -> None:
+        """Parse USERSTATE or GLOBALUSERSTATE to get our own user info."""
+        # Extract tags
+        if not raw.startswith("@"):
+            return
+        
+        tag_str = raw.split(" ", 1)[0]
+        tags = {}
+        for tag in tag_str[1:].split(";"):
+            if "=" in tag:
+                key, value = tag.split("=", 1)
+                tags[key] = value
+        
+        # Get display name
+        if tags.get("display-name"):
+            self.user_display_name = tags["display-name"]
+        
+        # Get color
+        if tags.get("color"):
+            self.user_color = tags["color"]
+        
+        # Get badges
+        badges_tag = tags.get("badges", "")
+        if badges_tag:
+            self.user_badges = []
+            for badge_pair in badges_tag.split(","):
+                if "/" in badge_pair:
+                    badge_name, badge_version = badge_pair.split("/", 1)
+                    badge_key = f"{badge_name}/{badge_version}"
+                    
+                    # Look up badge image URL
+                    icon_url = self.channel_badges.get(badge_key) or self.global_badges.get(badge_key)
+                    self.user_badges.append(ChatBadge(name=badge_name, icon_url=icon_url))
+        
+        print(f"Twitch: User info updated - {self.user_display_name}, color={self.user_color}, badges={len(self.user_badges)}")
 
     async def _parse_privmsg(self, raw: str) -> None:
         """

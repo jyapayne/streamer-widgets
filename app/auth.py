@@ -50,6 +50,7 @@ async def load_tokens(state: AppState) -> None:
                     else None
                 ),
                 scope=twitch_data.get("scope", []),
+                username=twitch_data.get("username"),
             )
             await state.set_auth_tokens(Platform.TWITCH, tokens)
 
@@ -110,7 +111,7 @@ async def handle_twitch_login(request: web.Request) -> web.Response:
         "client_id": _app_config.twitch_oauth.client_id,
         "redirect_uri": _app_config.twitch_oauth.redirect_uri,
         "response_type": "code",
-        "scope": "chat:read",
+        "scope": "chat:read chat:edit",
         "state": state_token,
     }
 
@@ -151,6 +152,19 @@ async def handle_twitch_callback(request: web.Request) -> web.Response:
 
             token_data = await resp.json()
 
+        # Get the user's username using the access token
+        user_login = None
+        headers = {
+            "Authorization": f"Bearer {token_data['access_token']}",
+            "Client-Id": _app_config.twitch_oauth.client_id,
+        }
+        async with session.get("https://api.twitch.tv/helix/users", headers=headers) as resp:
+            if resp.status == 200:
+                user_data = await resp.json()
+                if user_data.get("data"):
+                    user_login = user_data["data"][0].get("login")
+                    print(f"Twitch: Authenticated as {user_login}")
+
     # Store tokens
     state: AppState = request.app["state"]
     expires_in = token_data.get("expires_in", 3600)
@@ -159,6 +173,7 @@ async def handle_twitch_callback(request: web.Request) -> web.Response:
         refresh_token=token_data.get("refresh_token"),
         expires_at=datetime.now() + timedelta(seconds=expires_in),
         scope=token_data.get("scope", []),
+        username=user_login,
     )
 
     await state.set_auth_tokens(Platform.TWITCH, tokens)

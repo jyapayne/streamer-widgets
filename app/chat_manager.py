@@ -94,3 +94,72 @@ class ChatManager:
         """Restart all chat clients with current configuration."""
         await self.stop()
         await self.start()
+
+    async def send_message(self, platform: Platform | str, message: str) -> tuple[bool, str]:
+        """
+        Send a chat message to the specified platform(s).
+        
+        Platform can be Platform.TWITCH, Platform.YOUTUBE, or "all" to send to both.
+        Returns a tuple of (success, error_message).
+        """
+        # Handle sending to all platforms
+        if platform == "all":
+            return await self._send_to_all(message)
+        
+        if platform == Platform.TWITCH:
+            if not self.twitch_client:
+                return False, "Twitch chat not connected"
+            if not self.twitch_client.is_authenticated:
+                return False, "Not authenticated. Go to /config, login with Twitch, then restart the app."
+            success = await self.twitch_client.send_message(message)
+            if success:
+                return True, ""
+            return False, "Failed to send message"
+        
+        elif platform == Platform.YOUTUBE:
+            if not self.youtube_client:
+                return False, "YouTube chat not connected"
+            if not self.youtube_client.live_chat_id:
+                return False, "No active YouTube live chat found"
+            success = await self.youtube_client.send_message(message)
+            if success:
+                return True, ""
+            return False, "Failed to send message"
+        
+        return False, f"Unknown platform: {platform}"
+
+    async def _send_to_all(self, message: str) -> tuple[bool, str]:
+        """Send a message to all connected platforms with a single echo."""
+        errors = []
+        any_success = False
+        echoed = False
+        
+        # Try Twitch
+        if self.twitch_client and self.twitch_client.is_authenticated:
+            # Send without echo first
+            success = await self.twitch_client.send_message_no_echo(message)
+            if success:
+                any_success = True
+                # Echo once from Twitch (since it has better user info)
+                if not echoed:
+                    await self.twitch_client._echo_sent_message(message)
+                    echoed = True
+            else:
+                errors.append("Twitch: failed to send")
+        
+        # Try YouTube
+        if self.youtube_client and self.youtube_client.live_chat_id:
+            success = await self.youtube_client.send_message(message)
+            if success:
+                any_success = True
+            else:
+                errors.append("YouTube: failed to send")
+        
+        if any_success:
+            if errors:
+                return True, f"Sent (some failed: {', '.join(errors)})"
+            return True, ""
+        
+        if errors:
+            return False, "; ".join(errors)
+        return False, "No platforms connected"

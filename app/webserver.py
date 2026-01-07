@@ -4,7 +4,7 @@ from pathlib import Path
 
 from aiohttp import WSMsgType, web
 
-from app.chat_models import ChatConfig
+from app.chat_models import ChatConfig, Platform
 from app.config import get_config_file, load_config, save_chat_settings
 from app.paths import get_art_dir, get_web_assets_dir
 from app.state import AppState
@@ -13,6 +13,7 @@ from app.state import AppState
 WIDGETS = [
     {"slug": "nowplaying", "label": "Now Playing"},
     {"slug": "livechat", "label": "Live Chat"},
+    {"slug": "chatdock", "label": "Chat Dock"},
     {"slug": "viewercount", "label": "Viewer Count"},
 ]
 
@@ -75,6 +76,53 @@ async def handle_root(request: web.Request) -> web.Response:
                       </select>
                     </div>
                   </div>
+                </li>
+                """
+            elif slug == "chatdock":
+                # Chat Dock widget with options (same as livechat but for OBS dock)
+                item_html = f"""
+                <li class="widget-item">
+                  <div class="widget-header">
+                    <a id="chatdock-open" class="widget-name" href="{url}" target="_blank">{label}</a>
+                  </div>
+                  <div class="widget-url-row">
+                    <input type="hidden" id="chatdock-base-url" value="{url}">
+                    <input type="text" id="chatdock-url" value="{url}" readonly>
+                    <button class="copy-btn" onclick="copyUrl('chatdock-url')">Copy</button>
+                  </div>
+                  <div class="widget-options">
+                    <div class="option-group">
+                      <label>Theme</label>
+                      <select id="chatdock-theme" onchange="updateChatDockUrl()">
+                        <option value="dark">Dark</option>
+                        <option value="light">Light</option>
+                      </select>
+                    </div>
+                    <div class="option-group">
+                      <label>Direction</label>
+                      <select id="chatdock-direction" onchange="updateChatDockUrl()">
+                        <option value="down">Down (scrolls down)</option>
+                        <option value="up">Up (bubbles up, newest anchored)</option>
+                      </select>
+                    </div>
+                    <div class="option-group">
+                      <label>Font Size</label>
+                      <select id="chatdock-fontsize" onchange="updateChatDockUrl()">
+                        <option value="small">Small</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="large">Large</option>
+                        <option value="xlarge">Extra Large</option>
+                      </select>
+                    </div>
+                    <div class="option-group">
+                      <label>Timestamp</label>
+                      <select id="chatdock-hidetime" onchange="updateChatDockUrl()">
+                        <option value="false">Show</option>
+                        <option value="true">Hide</option>
+                      </select>
+                    </div>
+                  </div>
+                  <p class="widget-description">Chat dock with send capability. Requires Twitch OAuth to send messages.</p>
                 </li>
                 """
             elif slug == "viewercount":
@@ -236,6 +284,88 @@ async def handle_chat_config_post(request: web.Request) -> web.Response:
         await state.chat_manager.restart()
 
     return web.json_response({"status": "ok"})
+
+
+async def handle_chat_send(request: web.Request) -> web.Response:
+    """Send a chat message to a platform."""
+    state: AppState = request.app["state"]
+    
+    try:
+        data = await request.json()
+    except Exception:
+        return web.json_response(
+            {"success": False, "error": "Invalid JSON"},
+            status=400
+        )
+    
+    platform_str = data.get("platform", "").lower()
+    message = data.get("message", "").strip()
+    
+    if not message:
+        return web.json_response(
+            {"success": False, "error": "Message cannot be empty"},
+            status=400
+        )
+    
+    if len(message) > 500:
+        return web.json_response(
+            {"success": False, "error": "Message too long (max 500 characters)"},
+            status=400
+        )
+    
+    # Parse platform - can be "twitch", "youtube", or "all"
+    if platform_str == "all":
+        platform: Platform | str = "all"
+    else:
+        try:
+            platform = Platform(platform_str)
+        except ValueError:
+            return web.json_response(
+                {"success": False, "error": f"Invalid platform: {platform_str}"},
+                status=400
+            )
+    
+    # Check if chat manager is available
+    if not state.chat_manager:
+        return web.json_response(
+            {"success": False, "error": "Chat not initialized"},
+            status=503
+        )
+    
+    # Send the message
+    success, error = await state.chat_manager.send_message(platform, message)
+    
+    if success:
+        return web.json_response({"success": True})
+    else:
+        return web.json_response(
+            {"success": False, "error": error},
+            status=400
+        )
+
+
+async def handle_chat_reconnect(request: web.Request) -> web.Response:
+    """Reconnect chat with current tokens (useful after re-authenticating)."""
+    from app.auth import load_tokens
+    
+    state: AppState = request.app["state"]
+    
+    # Reload tokens from disk
+    await load_tokens(state)
+    
+    # Restart chat connections
+    if state.chat_manager:
+        print("Reconnecting chat with updated tokens...")
+        await state.chat_manager.restart()
+        return web.json_response({
+            "success": True,
+            "message": "Chat reconnected with updated tokens"
+        })
+    else:
+        return web.json_response({
+            "success": False,
+            "error": "Chat manager not initialized"
+        }, status=503)
 
 
 async def handle_config_page(request: web.Request) -> web.FileResponse:
@@ -407,6 +537,8 @@ def make_app(state: AppState) -> web.Application:
     app.router.add_get("/api/chat/messages", handle_chat_messages)
     app.router.add_get("/api/chat/config", handle_chat_config_get)
     app.router.add_post("/api/chat/config", handle_chat_config_post)
+    app.router.add_post("/api/chat/send", handle_chat_send)
+    app.router.add_post("/api/chat/reconnect", handle_chat_reconnect)
     app.router.add_get("/api/oauth/status", handle_oauth_status)
     app.router.add_get("/api/auth/status", handle_auth_status)
     app.router.add_post("/api/config/open-directory", handle_open_config_dir)

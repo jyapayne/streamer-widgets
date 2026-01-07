@@ -139,6 +139,12 @@
       background: white;
       cursor: pointer;
     }
+    .widget-description {
+      margin: 8px 0 0 0;
+      font-size: 12px;
+      color: #64748b;
+      font-style: italic;
+    }
     .footer {
       border-top: 1px solid #e2e8f0;
       padding: 16px 32px;
@@ -208,6 +214,34 @@
       openLink.href = url;
     }
 
+    // Chat Dock URL generator
+    function updateChatDockUrl() {
+      const baseUrl = document.getElementById('chatdock-base-url');
+      if (!baseUrl) return;
+      
+      const theme = document.getElementById('chatdock-theme').value;
+      const direction = document.getElementById('chatdock-direction').value;
+      const fontsize = document.getElementById('chatdock-fontsize').value;
+      const hidetime = document.getElementById('chatdock-hidetime').value;
+      const urlInput = document.getElementById('chatdock-url');
+      const openLink = document.getElementById('chatdock-open');
+      
+      let url = baseUrl.value;
+      const params = [];
+      
+      if (theme !== 'dark') params.push(`theme=${theme}`);
+      if (direction !== 'down') params.push(`direction=${direction}`);
+      if (fontsize !== 'medium') params.push(`fontsize=${fontsize}`);
+      if (hidetime === 'true') params.push(`hidetime=true`);
+      
+      if (params.length > 0) {
+        url += '?' + params.join('&');
+      }
+      
+      urlInput.value = url;
+      openLink.href = url;
+    }
+
     // Viewer Count URL generator
     function updateViewerCountUrl() {
       const baseUrl = document.getElementById('viewercount-base-url');
@@ -250,6 +284,7 @@
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', () => {
       updateLiveChatUrl();
+      updateChatDockUrl();
       updateViewerCountUrl();
     });
   </script>

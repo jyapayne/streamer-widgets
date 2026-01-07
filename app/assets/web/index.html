@@ -208,6 +208,34 @@
       openLink.href = url;
     }
 
+    // Viewer Count URL generator
+    function updateViewerCountUrl() {
+      const baseUrl = document.getElementById('viewercount-base-url');
+      if (!baseUrl) return;
+      
+      const theme = document.getElementById('viewercount-theme').value;
+      const fontsize = document.getElementById('viewercount-fontsize').value;
+      const hidelabel = document.getElementById('viewercount-hidelabel').value;
+      const livedot = document.getElementById('viewercount-livedot').value;
+      const urlInput = document.getElementById('viewercount-url');
+      const openLink = document.getElementById('viewercount-open');
+      
+      let url = baseUrl.value;
+      const params = [];
+      
+      if (theme !== 'dark') params.push(`theme=${theme}`);
+      if (fontsize !== 'medium') params.push(`fontsize=${fontsize}`);
+      if (hidelabel === 'true') params.push(`hidelabel=true`);
+      if (livedot === 'true') params.push(`livedot=true`);
+      
+      if (params.length > 0) {
+        url += '?' + params.join('&');
+      }
+      
+      urlInput.value = url;
+      openLink.href = url;
+    }
+
     function copyUrl(inputId) {
       const input = document.getElementById(inputId);
       input.select();
@@ -222,6 +250,7 @@
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', () => {
       updateLiveChatUrl();
+      updateViewerCountUrl();
     });
   </script>
 </body>

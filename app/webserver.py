@@ -13,6 +13,7 @@ from app.state import AppState
 WIDGETS = [
     {"slug": "nowplaying", "label": "Now Playing"},
     {"slug": "livechat", "label": "Live Chat"},
+    {"slug": "viewercount", "label": "Viewer Count"},
 ]
 
 
@@ -71,6 +72,53 @@ async def handle_root(request: web.Request) -> web.Response:
                       <select id="livechat-hidetime" onchange="updateLiveChatUrl()">
                         <option value="false">Show</option>
                         <option value="true">Hide</option>
+                      </select>
+                    </div>
+                  </div>
+                </li>
+                """
+            elif slug == "viewercount":
+                # Viewer Count widget with options
+                item_html = f"""
+                <li class="widget-item">
+                  <div class="widget-header">
+                    <a id="viewercount-open" class="widget-name" href="{url}" target="_blank">{label}</a>
+                  </div>
+                  <div class="widget-url-row">
+                    <input type="hidden" id="viewercount-base-url" value="{url}">
+                    <input type="text" id="viewercount-url" value="{url}" readonly>
+                    <button class="copy-btn" onclick="copyUrl('viewercount-url')">Copy</button>
+                  </div>
+                  <div class="widget-options">
+                    <div class="option-group">
+                      <label>Theme</label>
+                      <select id="viewercount-theme" onchange="updateViewerCountUrl()">
+                        <option value="dark">Dark</option>
+                        <option value="light">Light</option>
+                        <option value="minimal">Minimal (no bg)</option>
+                      </select>
+                    </div>
+                    <div class="option-group">
+                      <label>Font Size</label>
+                      <select id="viewercount-fontsize" onchange="updateViewerCountUrl()">
+                        <option value="small">Small</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="large">Large</option>
+                        <option value="xlarge">Extra Large</option>
+                      </select>
+                    </div>
+                    <div class="option-group">
+                      <label>Label</label>
+                      <select id="viewercount-hidelabel" onchange="updateViewerCountUrl()">
+                        <option value="false">Show</option>
+                        <option value="true">Hide</option>
+                      </select>
+                    </div>
+                    <div class="option-group">
+                      <label>Live Dot</label>
+                      <select id="viewercount-livedot" onchange="updateViewerCountUrl()">
+                        <option value="false">Hide</option>
+                        <option value="true">Show</option>
                       </select>
                     </div>
                   </div>
@@ -237,6 +285,81 @@ async def handle_open_config_dir(request: web.Request) -> web.Response:
         )
 
 
+async def handle_viewer_count(request: web.Request) -> web.Response:
+    """Get viewer count from Twitch and/or YouTube."""
+    import aiohttp
+    from app.chat_models import Platform
+
+    state: AppState = request.app["state"]
+    app_config = load_config()
+    chat_config = state.chat_config
+
+    twitch_count: int | None = None
+    youtube_count: int | None = None
+
+    # Fetch Twitch viewer count
+    if chat_config.twitch_channel:
+        try:
+            twitch_tokens = await state.get_auth_tokens(Platform.TWITCH)
+            if twitch_tokens and app_config.twitch_oauth.client_id:
+                headers = {
+                    "Client-ID": app_config.twitch_oauth.client_id,
+                    "Authorization": f"Bearer {twitch_tokens.access_token}",
+                }
+                async with aiohttp.ClientSession() as session:
+                    url = f"https://api.twitch.tv/helix/streams?user_login={chat_config.twitch_channel}"
+                    async with session.get(url, headers=headers) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            streams = data.get("data", [])
+                            if streams:
+                                twitch_count = streams[0].get("viewer_count", 0)
+                            else:
+                                # Channel configured but not live
+                                twitch_count = 0
+        except Exception as e:
+            print(f"Error fetching Twitch viewer count: {e}")
+
+    # Fetch YouTube viewer count
+    if chat_config.youtube_video_id:
+        try:
+            youtube_tokens = await state.get_auth_tokens(Platform.YOUTUBE)
+            if youtube_tokens:
+                async with aiohttp.ClientSession() as session:
+                    url = (
+                        f"https://www.googleapis.com/youtube/v3/videos"
+                        f"?part=liveStreamingDetails&id={chat_config.youtube_video_id}"
+                    )
+                    headers = {"Authorization": f"Bearer {youtube_tokens.access_token}"}
+                    async with session.get(url, headers=headers) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            items = data.get("items", [])
+                            if items:
+                                live_details = items[0].get("liveStreamingDetails", {})
+                                concurrent = live_details.get("concurrentViewers")
+                                if concurrent is not None:
+                                    youtube_count = int(concurrent)
+                                else:
+                                    # Video exists but not live
+                                    youtube_count = 0
+        except Exception as e:
+            print(f"Error fetching YouTube viewer count: {e}")
+
+    # Calculate total
+    total = 0
+    if twitch_count is not None:
+        total += twitch_count
+    if youtube_count is not None:
+        total += youtube_count
+
+    return web.json_response({
+        "twitch": twitch_count,
+        "youtube": youtube_count,
+        "total": total,
+    })
+
+
 async def handle_ws(request: web.Request) -> web.WebSocketResponse:
     state: AppState = request.app["state"]
     ws = web.WebSocketResponse(heartbeat=30)
@@ -287,6 +410,7 @@ def make_app(state: AppState) -> web.Application:
     app.router.add_get("/api/oauth/status", handle_oauth_status)
     app.router.add_get("/api/auth/status", handle_auth_status)
     app.router.add_post("/api/config/open-directory", handle_open_config_dir)
+    app.router.add_get("/api/viewercount", handle_viewer_count)
     app.router.add_get("/ws", handle_ws)
 
     # Register OAuth routes

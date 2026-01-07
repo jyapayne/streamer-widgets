@@ -1,46 +1,25 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-block_cipher = None
 
 a = Analysis(
     ['run_tray.py'],
     pathex=[],
     binaries=[],
-    datas=[
-        ('app/assets', 'app/assets'),
-    ],
-    hiddenimports=[
-        'app',
-        'app.main',
-        'app.tray',
-        'app.webserver',
-        'app.state',
-        'app.paths',
-        'app.providers',
-        'app.widgets',
-        'win32timezone',
-        'pywintypes',
-        'win32api',
-        'win32con',
-        'win32gui',
-    ],
+    datas=[('app/assets/web', 'app/assets/web')],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
     noarchive=False,
+    optimize=0,
 )
-
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
     a.scripts,
     a.binaries,
-    a.zipfiles,
     a.datas,
     [],
     name='StreamerWidgets',
@@ -50,11 +29,11 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,  # Set to False for windowed app (no console window)
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='app_icon.ico',  # Uses the same icon as the tray icon
+    icon='app_icon.ico',
 )

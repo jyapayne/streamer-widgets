@@ -8,6 +8,10 @@ from typing import Optional
 
 from aiohttp import web
 
+from app.auth import load_tokens
+from app.chat_manager import ChatManager
+from app.chat_models import ChatConfig
+from app.config import create_example_config, get_config_file, load_chat_settings
 from app.providers.gsmtc import run_gsmtc_provider
 from app.state import AppState
 from app.webserver import make_app
@@ -36,7 +40,35 @@ def _install_loop_exception_handler(loop: asyncio.AbstractEventLoop) -> None:
     loop.set_exception_handler(handler)
 
 
+def _load_chat_config_from_settings(state: AppState) -> None:
+    """Load saved chat settings into state."""
+    settings = load_chat_settings()
+    if settings:
+        state.chat_config = ChatConfig(
+            twitch_channel=settings.get("twitch_channel", ""),
+            youtube_video_id=settings.get("youtube_video_id", ""),
+            max_messages=settings.get("max_messages", 50),
+            show_timestamps=settings.get("show_timestamps", True),
+            show_badges=settings.get("show_badges", True),
+            show_platform_icons=settings.get("show_platform_icons", True),
+            unified_view=settings.get("unified_view", True),
+            enable_ffz=settings.get("enable_ffz", True),
+            enable_bttv=settings.get("enable_bttv", True),
+            enable_7tv=settings.get("enable_7tv", True),
+        )
+        print(f"Loaded chat settings: twitch={settings.get('twitch_channel', '')}, youtube={settings.get('youtube_video_id', '')}")
+
+
 async def _run_server(host: str, port: int, state: AppState) -> None:
+    # Create example config if it doesn't exist
+    create_example_config()
+
+    # Load saved tokens
+    await load_tokens(state)
+    
+    # Load saved chat settings
+    _load_chat_config_from_settings(state)
+
     app = make_app(state)
     runner = web.AppRunner(app)
     await runner.setup()
@@ -46,8 +78,16 @@ async def _run_server(host: str, port: int, state: AppState) -> None:
     # Start providers
     asyncio.create_task(run_gsmtc_provider(state))
 
-    while True:
-        await asyncio.sleep(3600)
+    # Start chat manager (if configured)
+    chat_manager = ChatManager(state)
+    state.chat_manager = chat_manager  # Store reference for config changes
+    await chat_manager.start()
+
+    try:
+        while True:
+            await asyncio.sleep(3600)
+    finally:
+        await chat_manager.stop()
 
 
 def run_forever(host: str = "127.0.0.1", port: int = 8765) -> None:
@@ -98,6 +138,15 @@ class ServerController:
             state = AppState()
 
             async def runner() -> None:
+                # Create example config if it doesn't exist
+                create_example_config()
+
+                # Load saved tokens
+                await load_tokens(state)
+                
+                # Load saved chat settings
+                _load_chat_config_from_settings(state)
+
                 app = make_app(state)
                 runner = web.AppRunner(app)
                 await runner.setup()
@@ -105,10 +154,16 @@ class ServerController:
                 await site.start()
                 provider_task = asyncio.create_task(run_gsmtc_provider(state))
 
+                # Start chat manager
+                chat_manager = ChatManager(state)
+                state.chat_manager = chat_manager  # Store reference for config changes
+                await chat_manager.start()
+
                 try:
                     while not self._stop_evt.is_set():
                         await asyncio.sleep(0.2)
                 finally:
+                    await chat_manager.stop()
                     provider_task.cancel()
                     # CancelledError may derive from BaseException depending on Python version;
                     # suppress it so Stop doesn't spam a traceback.

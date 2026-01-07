@@ -1,0 +1,470 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chat Configuration - Streamer Widgets</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f8fafc;
+      color: #334155;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+    header {
+      background: #0f172a;
+      color: white;
+      padding: 24px 32px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 600;
+    }
+    .content {
+      padding: 32px;
+    }
+    .section {
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .section:last-child {
+      border-bottom: none;
+    }
+    h2 {
+      font-size: 18px;
+      margin: 0 0 16px;
+      color: #1e293b;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    input[type="checkbox"] {
+      margin-right: 8px;
+    }
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    button {
+      background: #0f172a;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+    button:hover {
+      background: #1e293b;
+    }
+    button.secondary {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+    button.secondary:hover {
+      background: #cbd5e1;
+    }
+    button:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+    button:disabled:hover {
+      background: #94a3b8;
+    }
+    .status {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      display: none;
+    }
+    .status.success {
+      background: #dcfce7;
+      color: #166534;
+      display: block;
+    }
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+      display: block;
+    }
+    .platform-status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      margin-left: 8px;
+    }
+    .connected {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .disconnected {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    .help-text {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+    .warning-box {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    .warning-box h3 {
+      margin: 0 0 8px 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: #92400e;
+    }
+    .warning-box p {
+      margin: 0 0 8px 0;
+      font-size: 13px;
+      color: #78350f;
+      line-height: 1.5;
+    }
+    .warning-box code {
+      background: rgba(0,0,0,0.1);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .warning-box ul {
+      margin: 8px 0;
+      padding-left: 20px;
+    }
+    .warning-box li {
+      margin: 4px 0;
+      font-size: 13px;
+      color: #78350f;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Live Chat Configuration</h1>
+    </header>
+    <div class="content">
+      <!-- Twitch Section -->
+      <div class="section">
+        <h2>
+          Twitch
+          <span id="twitch-status" class="platform-status disconnected">Not Connected</span>
+        </h2>
+        <div class="form-group">
+          <label for="twitch-channel">Channel Name</label>
+          <input type="text" id="twitch-channel" placeholder="your_channel_name">
+          <div class="help-text">Enter the Twitch channel you want to monitor. Chat works immediately - no login required!</div>
+        </div>
+        <button id="twitch-login-btn" onclick="loginTwitch()">Login with Twitch</button>
+        <span id="twitch-login-note" class="help-text" style="display: inline; margin-left: 8px;">(Optional - for extra features)</span>
+      </div>
+
+      <!-- YouTube Section -->
+      <div class="section">
+        <h2>
+          YouTube
+          <span id="youtube-status" class="platform-status disconnected">Not Logged In</span>
+        </h2>
+        <div id="youtube-not-configured" class="warning-box" style="display: none; margin-bottom: 16px;">
+          <h3>⚠️ YouTube Not Available</h3>
+          <p>YouTube requires OAuth credentials to be configured. See the Advanced Settings section below for setup instructions.</p>
+        </div>
+        <div class="form-group">
+          <label for="youtube-video-id">Video/Stream ID <span style="color: #64748b; font-weight: normal;">(Optional)</span></label>
+          <input type="text" id="youtube-video-id" placeholder="Leave blank to auto-detect your stream">
+          <div class="help-text">
+            <strong>Auto-detect:</strong> Leave blank to automatically find your active live stream<br>
+            <strong>Manual:</strong> Enter a video ID from the URL (e.g., youtube.com/watch?v=<strong>dQw4w9WgXcQ</strong>)
+          </div>
+        </div>
+        <button id="youtube-login-btn" onclick="loginYouTube()">Login with YouTube</button>
+      </div>
+
+      <!-- Emote Providers -->
+      <div class="section">
+        <h2>Emote Providers</h2>
+        <label class="checkbox-label">
+          <input type="checkbox" id="enable-ffz" checked>
+          Enable FrankerFaceZ emotes
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="enable-bttv" checked>
+          Enable BetterTTV emotes
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="enable-7tv" checked>
+          Enable 7TV emotes
+        </label>
+      </div>
+
+      <!-- Display Settings -->
+      <div class="section">
+        <h2>Display Settings</h2>
+        <div class="form-group">
+          <label for="max-messages">Maximum Messages</label>
+          <input type="number" id="max-messages" value="50" min="10" max="200">
+          <div class="help-text">Number of messages to keep in the widget</div>
+        </div>
+        <label class="checkbox-label">
+          <input type="checkbox" id="show-timestamps" checked>
+          Show timestamps
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="show-badges" checked>
+          Show user badges
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="unified-view" checked>
+          Unified view (mix both platforms)
+        </label>
+      </div>
+
+      <!-- Actions -->
+      <div class="section">
+        <button onclick="saveConfig()">Save Configuration</button>
+        <button class="secondary" onclick="window.location.href='/'">Back to Widgets</button>
+        <div id="status" class="status"></div>
+      </div>
+
+      <!-- Advanced Settings -->
+      <div class="section" style="background: #f1f5f9; margin: 0 -32px -32px; padding: 24px 32px; border-radius: 0 0 12px 12px;">
+        <details>
+          <summary style="cursor: pointer; font-size: 16px; font-weight: 600; color: #1e293b; margin-bottom: 12px;">
+            🔧 Advanced Settings
+          </summary>
+          <div style="margin-top: 16px;">
+            <p style="font-size: 14px; color: #64748b; margin: 0 0 12px;">
+              Configuration files are stored at:
+            </p>
+            <code id="config-path-display" style="display: block; background: #e2e8f0; padding: 10px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; word-break: break-all;"></code>
+            <button class="secondary" onclick="openConfigDirectory()">📁 Open Config Directory</button>
+            
+            <div id="oauth-setup-instructions" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #cbd5e1; display: none;">
+              <h4 style="margin: 0 0 12px; font-size: 14px; color: #1e293b;">Setting Up OAuth Credentials</h4>
+              <p style="font-size: 13px; color: #64748b; line-height: 1.6;">
+                To enable login functionality, you need to create OAuth apps and add your credentials to <code>config.json</code>:
+              </p>
+              <ul style="font-size: 13px; color: #64748b; line-height: 1.8; padding-left: 20px;">
+                <li><strong>Twitch:</strong> Create an app at <a href="https://dev.twitch.tv/console/apps" target="_blank">dev.twitch.tv/console/apps</a></li>
+                <li><strong>YouTube:</strong> Create credentials in <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a> with YouTube Data API v3 enabled</li>
+              </ul>
+              <p style="font-size: 13px; color: #64748b;">
+                Set redirect URI to: <code>http://localhost:8765/auth/twitch/callback</code> (or youtube)
+              </p>
+            </div>
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Check OAuth configuration status
+    async function checkOAuthStatus() {
+      try {
+        const resp = await fetch('/api/oauth/status');
+        if (resp.ok) {
+          const data = await resp.json();
+          const configPathDisplay = document.getElementById('config-path-display');
+          const youtubeWarning = document.getElementById('youtube-not-configured');
+          const oauthSetupInstructions = document.getElementById('oauth-setup-instructions');
+
+          // Always show the config file path
+          if (configPathDisplay) {
+            configPathDisplay.textContent = data.config_file;
+          }
+
+          // Handle Twitch OAuth status
+          const twitchBtn = document.getElementById('twitch-login-btn');
+          const twitchNote = document.getElementById('twitch-login-note');
+          if (!data.twitch_configured) {
+            twitchBtn.disabled = true;
+            twitchBtn.title = 'OAuth not configured - chat still works anonymously!';
+            twitchBtn.textContent = 'Login Unavailable';
+            twitchNote.textContent = '(Chat works without login!)';
+          }
+
+          // Handle YouTube OAuth status
+          const youtubeBtn = document.getElementById('youtube-login-btn');
+          if (!data.youtube_configured) {
+            youtubeBtn.disabled = true;
+            youtubeBtn.title = 'OAuth credentials required for YouTube';
+            youtubeWarning.style.display = 'block';
+          }
+
+          // Show OAuth setup instructions if either platform is not configured
+          if (!data.twitch_configured || !data.youtube_configured) {
+            oauthSetupInstructions.style.display = 'block';
+          }
+        }
+      } catch (err) {
+        console.error('Failed to check OAuth status:', err);
+      }
+    }
+
+    // Load current configuration
+    async function loadConfig() {
+      try {
+        const resp = await fetch('/api/chat/config');
+        if (resp.ok) {
+          const config = await resp.json();
+
+          // Populate form
+          document.getElementById('twitch-channel').value = config.twitch_channel || '';
+          document.getElementById('youtube-video-id').value = config.youtube_video_id || '';
+          document.getElementById('enable-ffz').checked = config.enable_ffz !== false;
+          document.getElementById('enable-bttv').checked = config.enable_bttv !== false;
+          document.getElementById('enable-7tv').checked = config.enable_7tv !== false;
+          document.getElementById('max-messages').value = config.max_messages || 50;
+          document.getElementById('show-timestamps').checked = config.show_timestamps !== false;
+          document.getElementById('show-badges').checked = config.show_badges !== false;
+          document.getElementById('unified-view').checked = config.unified_view !== false;
+        }
+      } catch (err) {
+        console.error('Failed to load config:', err);
+      }
+    }
+
+    // Check authentication status (whether user has logged in)
+    async function checkAuthStatus() {
+      try {
+        const resp = await fetch('/api/auth/status');
+        if (resp.ok) {
+          const data = await resp.json();
+
+          // Update Twitch status
+          const twitchStatus = document.getElementById('twitch-status');
+          if (data.twitch_authenticated) {
+            twitchStatus.className = 'platform-status connected';
+            twitchStatus.textContent = 'Logged In';
+          } else {
+            twitchStatus.className = 'platform-status disconnected';
+            twitchStatus.textContent = 'Not Logged In';
+          }
+
+          // Update YouTube status
+          const youtubeStatus = document.getElementById('youtube-status');
+          if (data.youtube_authenticated) {
+            youtubeStatus.className = 'platform-status connected';
+            youtubeStatus.textContent = 'Logged In';
+          } else {
+            youtubeStatus.className = 'platform-status disconnected';
+            youtubeStatus.textContent = 'Not Logged In';
+          }
+        }
+      } catch (err) {
+        console.error('Failed to check auth status:', err);
+      }
+    }
+
+    async function saveConfig() {
+      const config = {
+        twitch_channel: document.getElementById('twitch-channel').value,
+        youtube_video_id: document.getElementById('youtube-video-id').value,
+        enable_ffz: document.getElementById('enable-ffz').checked,
+        enable_bttv: document.getElementById('enable-bttv').checked,
+        enable_7tv: document.getElementById('enable-7tv').checked,
+        max_messages: parseInt(document.getElementById('max-messages').value),
+        show_timestamps: document.getElementById('show-timestamps').checked,
+        show_badges: document.getElementById('show-badges').checked,
+        unified_view: document.getElementById('unified-view').checked,
+      };
+
+      try {
+        const resp = await fetch('/api/chat/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config),
+        });
+
+        const status = document.getElementById('status');
+        if (resp.ok) {
+          status.className = 'status success';
+          status.textContent = 'Configuration saved successfully!';
+        } else {
+          status.className = 'status error';
+          status.textContent = 'Failed to save configuration';
+        }
+      } catch (err) {
+        const status = document.getElementById('status');
+        status.className = 'status error';
+        status.textContent = 'Error: ' + err.message;
+      }
+    }
+
+    function loginTwitch() {
+      window.open('/auth/twitch/login', 'TwitchAuth', 'width=600,height=700');
+    }
+
+    function loginYouTube() {
+      window.open('/auth/youtube/login', 'YouTubeAuth', 'width=600,height=700');
+    }
+
+    // Called by OAuth popup when authentication succeeds
+    window.onAuthComplete = function(platform) {
+      console.log(`${platform} authentication complete`);
+      checkAuthStatus();
+    };
+
+    async function openConfigDirectory() {
+      try {
+        const resp = await fetch('/api/config/open-directory', { method: 'POST' });
+        const data = await resp.json();
+
+        if (resp.ok) {
+          // Directory opened successfully
+        } else {
+          const path = document.getElementById('config-path-display').textContent;
+          alert('Failed to open directory. Path: ' + path);
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    // Load config and check status on page load
+    checkOAuthStatus();
+    loadConfig();
+    checkAuthStatus();
+  </script>
+</body>
+</html>

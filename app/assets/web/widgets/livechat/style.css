@@ -1,0 +1,266 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: transparent;
+  overflow: hidden;
+  color: #fff; /* Default dark mode text */
+}
+
+/* Light Theme overrides */
+body.theme-light {
+  color: #1a1a1a;
+}
+
+body.theme-light .chat-message {
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+body.theme-light .username {
+  text-shadow: none;
+}
+
+body.theme-light .timestamp {
+  color: #666;
+}
+
+body.theme-light .badge {
+  background: rgba(0, 0, 0, 0.1);
+  color: #333;
+}
+
+body.theme-light #chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Dark Theme (Default) overrides for clarity */
+body.theme-dark .chat-message {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+#chat-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+}
+
+#chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Hide scrollbar but keep functionality */
+#chat-messages::-webkit-scrollbar {
+  width: 4px;
+}
+
+#chat-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+/* Chat message */
+.chat-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+  animation: slideIn 0.2s ease-out;
+  word-wrap: break-word;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Direction UP: Messages anchor to bottom, bubble upward */
+body.direction-up #chat-messages {
+  flex-direction: column-reverse;
+  justify-content: flex-start;
+}
+
+body.direction-up .chat-message {
+  animation: slideUp 0.2s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.chat-message.twitch {
+  border-left: 3px solid #9146FF;
+}
+
+.chat-message.youtube {
+  border-left: 3px solid #FF0000;
+}
+
+.chat-message.action {
+  font-style: italic;
+  background: rgba(100, 100, 100, 0.3);
+}
+
+/* Platform icon */
+.platform-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+}
+
+.platform-icon img {
+  width: 100%;
+  height: 100%;
+}
+
+/* Message content area */
+.message-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+/* User info line */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.user-badges {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.badge {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  font-size: 10px;
+  font-weight: bold;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.badge img {
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+}
+
+.username {
+  font-weight: bold;
+  font-size: 14px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.timestamp {
+  font-size: 11px;
+  color: #aaa;
+  opacity: 0.8;
+}
+
+/* Message text */
+.message-text {
+  font-size: 14px;
+  line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Emotes */
+.emote {
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0 2px;
+  max-height: 28px;
+  max-width: 28px;
+  image-rendering: pixelated;
+}
+
+.emote.animated {
+  image-rendering: auto;
+}
+
+/* Roles */
+.role-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.role-badge.broadcaster {
+  background: #e91916;
+}
+
+.role-badge.moderator {
+  background: #00ad03;
+}
+
+.role-badge.vip {
+  background: #e005b9;
+}
+
+.role-badge.subscriber {
+  background: #6441a5;
+}
+
+/* Loading/Error states */
+.status-message {
+  text-align: center;
+  padding: 20px;
+  color: #aaa;
+  font-size: 14px;
+}
+
+.error {
+  color: #ff6b6b;
+}
+
+.connecting {
+  color: #4ecdc4;
+}

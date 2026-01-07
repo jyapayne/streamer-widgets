@@ -4,12 +4,15 @@ from pathlib import Path
 
 from aiohttp import WSMsgType, web
 
+from app.chat_models import ChatConfig
+from app.config import get_config_file, load_config, save_chat_settings
 from app.paths import get_art_dir, get_web_assets_dir
 from app.state import AppState
 
 # Declare widgets once to avoid duplicated slugs/labels.
 WIDGETS = [
     {"slug": "nowplaying", "label": "Now Playing"},
+    {"slug": "livechat", "label": "Live Chat"},
 ]
 
 
@@ -27,14 +30,49 @@ async def handle_root(request: web.Request) -> web.Response:
             label = widget.get("label", slug or "Widget")
             url = f"http://{request.host}/widgets/{slug}/" if slug else ""
             
-            item_html = f"""
-            <li class="widget-item">
-              <div class="widget-header">
-                <a class="widget-name" href="{url}" target="_blank">{label}</a>
-              </div>
-              <div class="widget-url-row">{url}</div>
-            </li>
-            """
+            if slug == "livechat":
+                # Live Chat widget with options
+                item_html = f"""
+                <li class="widget-item">
+                  <div class="widget-header">
+                    <a id="livechat-open" class="widget-name" href="{url}" target="_blank">{label}</a>
+                  </div>
+                  <div class="widget-url-row">
+                    <input type="hidden" id="livechat-base-url" value="{url}">
+                    <input type="text" id="livechat-url" value="{url}" readonly>
+                    <button class="copy-btn" onclick="copyUrl('livechat-url')">Copy</button>
+                  </div>
+                  <div class="widget-options">
+                    <div class="option-group">
+                      <label>Theme</label>
+                      <select id="livechat-theme" onchange="updateLiveChatUrl()">
+                        <option value="dark">Dark (transparent)</option>
+                        <option value="light">Light</option>
+                      </select>
+                    </div>
+                    <div class="option-group">
+                      <label>Direction</label>
+                      <select id="livechat-direction" onchange="updateLiveChatUrl()">
+                        <option value="down">Down (scrolls down)</option>
+                        <option value="up">Up (bubbles up, newest anchored)</option>
+                      </select>
+                    </div>
+                  </div>
+                </li>
+                """
+            else:
+                # Standard widget without options
+                item_html = f"""
+                <li class="widget-item">
+                  <div class="widget-header">
+                    <a class="widget-name" href="{url}" target="_blank">{label}</a>
+                  </div>
+                  <div class="widget-url-row">
+                    <input type="text" id="{slug}-url" value="{url}" readonly>
+                    <button class="copy-btn" onclick="copyUrl('{slug}-url')">Copy</button>
+                  </div>
+                </li>
+                """
             widget_items.append(item_html)
         widget_list_html = "\n".join(widget_items) if widget_items else '<li class="widget-item">No widgets configured</li>'
 
@@ -50,6 +88,8 @@ async def handle_root(request: web.Request) -> web.Response:
 
 async def handle_widget(request: web.Request) -> web.FileResponse:
     slug = request.match_info.get("slug")
+    if not slug:
+        raise web.HTTPNotFound(text="Widget not found")
     web_root = get_web_assets_dir()
     index_path = web_root / "widgets" / slug / "index.html"
     if index_path.exists():
@@ -63,6 +103,124 @@ async def handle_nowplaying(request: web.Request) -> web.Response:
     return web.json_response(np.to_dict())
 
 
+async def handle_chat_messages(request: web.Request) -> web.Response:
+    """API endpoint to get recent chat messages."""
+    state: AppState = request.app["state"]
+    limit = int(request.query.get("limit", 50))
+    messages = await state.get_chat_messages(limit)
+    return web.json_response([msg.to_dict() for msg in messages])
+
+
+async def handle_chat_config_get(request: web.Request) -> web.Response:
+    """Get current chat configuration."""
+    state: AppState = request.app["state"]
+    config = state.chat_config
+    return web.json_response(config.to_dict())
+
+
+async def handle_chat_config_post(request: web.Request) -> web.Response:
+    """Update chat configuration."""
+    state: AppState = request.app["state"]
+    data = await request.json()
+
+    # Check if channel settings changed (need to restart chat)
+    old_config = state.chat_config
+    new_twitch_channel = data.get("twitch_channel", "")
+    new_youtube_video_id = data.get("youtube_video_id", "")
+    
+    channel_changed = (
+        old_config.twitch_channel != new_twitch_channel or
+        old_config.youtube_video_id != new_youtube_video_id
+    )
+
+    config = ChatConfig(
+        twitch_enabled=data.get("twitch_enabled", False),
+        youtube_enabled=data.get("youtube_enabled", False),
+        max_messages=data.get("max_messages", 50),
+        show_timestamps=data.get("show_timestamps", True),
+        show_badges=data.get("show_badges", True),
+        show_platform_icons=data.get("show_platform_icons", True),
+        unified_view=data.get("unified_view", True),
+        enable_ffz=data.get("enable_ffz", True),
+        enable_bttv=data.get("enable_bttv", True),
+        enable_7tv=data.get("enable_7tv", True),
+        filter_by_roles=data.get("filter_by_roles", []),
+        blocked_keywords=data.get("blocked_keywords", []),
+        min_message_length=data.get("min_message_length", 0),
+        twitch_channel=new_twitch_channel,
+        youtube_video_id=new_youtube_video_id,
+    )
+
+    await state.update_chat_config(config)
+
+    # Save chat settings to disk for persistence
+    save_chat_settings({
+        "twitch_channel": config.twitch_channel,
+        "youtube_video_id": config.youtube_video_id,
+        "max_messages": config.max_messages,
+        "show_timestamps": config.show_timestamps,
+        "show_badges": config.show_badges,
+        "show_platform_icons": config.show_platform_icons,
+        "unified_view": config.unified_view,
+        "enable_ffz": config.enable_ffz,
+        "enable_bttv": config.enable_bttv,
+        "enable_7tv": config.enable_7tv,
+    })
+
+    # Restart chat connections if channel settings changed
+    if channel_changed and state.chat_manager:
+        await state.chat_manager.restart()
+
+    return web.json_response({"status": "ok"})
+
+
+async def handle_config_page(request: web.Request) -> web.FileResponse:
+    """Serve the configuration page."""
+    config_path = get_web_assets_dir() / "config.html"
+    return web.FileResponse(path=str(config_path))
+
+
+async def handle_oauth_status(request: web.Request) -> web.Response:
+    """Get OAuth configuration status."""
+    app_config = load_config()
+
+    return web.json_response({
+        "twitch_configured": app_config.twitch_oauth.is_configured(),
+        "youtube_configured": app_config.youtube_oauth.is_configured(),
+        "config_file": str(get_config_file()),
+    })
+
+
+async def handle_auth_status(request: web.Request) -> web.Response:
+    """Get authentication status (whether user has logged in)."""
+    from app.chat_models import Platform
+
+    state: AppState = request.app["state"]
+    
+    twitch_tokens = await state.get_auth_tokens(Platform.TWITCH)
+    youtube_tokens = await state.get_auth_tokens(Platform.YOUTUBE)
+
+    return web.json_response({
+        "twitch_authenticated": twitch_tokens is not None and not twitch_tokens.is_expired(),
+        "youtube_authenticated": youtube_tokens is not None and not youtube_tokens.is_expired(),
+    })
+
+
+async def handle_open_config_dir(request: web.Request) -> web.Response:
+    """Open the config directory in file explorer."""
+    from app.config import open_config_directory
+
+    success = open_config_directory()
+
+    if success:
+        return web.json_response({"status": "ok", "message": "Opened config directory"})
+    else:
+        return web.json_response(
+            {"status": "error", "message": "Failed to open directory"},
+            status=500
+        )
+
+
 async def handle_ws(request: web.Request) -> web.WebSocketResponse:
     state: AppState = request.app["state"]
     ws = web.WebSocketResponse(heartbeat=30)
@@ -70,9 +228,16 @@ async def handle_ws(request: web.Request) -> web.WebSocketResponse:
 
     await state.register_ws(ws)
     try:
-        # Send initial snapshot
+        # Send initial snapshots
         np = await state.get_now_playing()
         await ws.send_json({"type": "nowplaying", "data": np.to_dict()})
+
+        # Send chat history
+        chat_messages = await state.get_chat_messages(50)
+        await ws.send_json({
+            "type": "chat_history",
+            "data": [msg.to_dict() for msg in chat_messages]
+        })
 
         async for msg in ws:
             if msg.type == WSMsgType.TEXT:
@@ -87,6 +252,8 @@ async def handle_ws(request: web.Request) -> web.WebSocketResponse:
 
 
 def make_app(state: AppState) -> web.Application:
+    from app.auth import register_auth_routes
+
     app = web.Application()
     app["state"] = state
 
@@ -95,11 +262,19 @@ def make_app(state: AppState) -> web.Application:
 
     # Pages / API
     app.router.add_get("/", handle_root)
-    for widget in WIDGETS:
-        slug = widget["slug"]
-        app.router.add_get(f"/widgets/{slug}/", handle_widget)
+    app.router.add_get("/config", handle_config_page)
+    app.router.add_get("/widgets/{slug}/", handle_widget)
     app.router.add_get("/api/nowplaying", handle_nowplaying)
+    app.router.add_get("/api/chat/messages", handle_chat_messages)
+    app.router.add_get("/api/chat/config", handle_chat_config_get)
+    app.router.add_post("/api/chat/config", handle_chat_config_post)
+    app.router.add_get("/api/oauth/status", handle_oauth_status)
+    app.router.add_get("/api/auth/status", handle_auth_status)
+    app.router.add_post("/api/config/open-directory", handle_open_config_dir)
     app.router.add_get("/ws", handle_ws)
+
+    # Register OAuth routes
+    register_auth_routes(app)
 
     # Widget static routing
     # e.g. /widgets/nowplaying/ -> web/widgets/nowplaying/index.html

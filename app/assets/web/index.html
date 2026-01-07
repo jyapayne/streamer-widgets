@@ -80,6 +80,7 @@
     .widget-url-row {
       display: flex;
       align-items: center;
+      gap: 8px;
       background: #ffffff;
       border: 1px solid #cbd5e1;
       border-radius: 6px;
@@ -87,7 +88,56 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
       font-size: 13px;
       color: #475569;
-      overflow-x: auto;
+    }
+    .widget-url-row input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      font-size: inherit;
+      color: inherit;
+      outline: none;
+      min-width: 0;
+    }
+    .copy-btn {
+      background: #0f172a;
+      color: white;
+      border: none;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .copy-btn:hover {
+      background: #1e293b;
+    }
+    .widget-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 8px;
+      padding-top: 12px;
+      border-top: 1px solid #e2e8f0;
+    }
+    .option-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .option-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+    }
+    .option-group select {
+      padding: 6px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      font-size: 13px;
+      background: white;
+      cursor: pointer;
     }
     .footer {
       border-top: 1px solid #e2e8f0;
@@ -96,6 +146,13 @@
       font-size: 13px;
       color: #64748b;
       text-align: center;
+    }
+    .footer a {
+      color: #0f172a;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
     }
     code {
       font-family: inherit;
@@ -118,8 +175,50 @@
       </ul>
     </div>
     <div class="footer">
-      Server running at <code>{{HOSTPORT}}</code>
+      Server running at <code>{{HOSTPORT}}</code> · <a href="/config">Configure Chat</a>
     </div>
   </div>
+
+  <script>
+    // Live Chat URL generator
+    function updateLiveChatUrl() {
+      const baseUrl = document.getElementById('livechat-base-url');
+      if (!baseUrl) return;
+      
+      const theme = document.getElementById('livechat-theme').value;
+      const direction = document.getElementById('livechat-direction').value;
+      const urlInput = document.getElementById('livechat-url');
+      const openLink = document.getElementById('livechat-open');
+      
+      let url = baseUrl.value;
+      const params = [];
+      
+      if (theme !== 'dark') params.push(`theme=${theme}`);
+      if (direction !== 'down') params.push(`direction=${direction}`);
+      
+      if (params.length > 0) {
+        url += '?' + params.join('&');
+      }
+      
+      urlInput.value = url;
+      openLink.href = url;
+    }
+
+    function copyUrl(inputId) {
+      const input = document.getElementById(inputId);
+      input.select();
+      navigator.clipboard.writeText(input.value).then(() => {
+        const btn = input.parentElement.querySelector('.copy-btn');
+        const originalText = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = originalText, 1500);
+      });
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      updateLiveChatUrl();
+    });
+  </script>
 </body>
 </html>

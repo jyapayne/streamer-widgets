@@ -27,6 +27,16 @@ class LiveChatWidget {
       document.body.classList.add('direction-up');
     }
 
+    // Font size: small, medium (default), large, xlarge
+    const fontSize = urlParams.get('fontsize') || 'medium';
+    document.body.classList.add(`font-${fontSize}`);
+
+    // Hide timestamp option
+    const hideTime = urlParams.get('hidetime');
+    if (hideTime === 'true' || hideTime === '1') {
+      document.body.classList.add('hide-time');
+    }
+
     this.init();
   }
 

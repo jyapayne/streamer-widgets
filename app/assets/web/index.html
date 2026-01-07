@@ -187,6 +187,8 @@
       
       const theme = document.getElementById('livechat-theme').value;
       const direction = document.getElementById('livechat-direction').value;
+      const fontsize = document.getElementById('livechat-fontsize').value;
+      const hidetime = document.getElementById('livechat-hidetime').value;
       const urlInput = document.getElementById('livechat-url');
       const openLink = document.getElementById('livechat-open');
       
@@ -195,6 +197,8 @@
       
       if (theme !== 'dark') params.push(`theme=${theme}`);
       if (direction !== 'down') params.push(`direction=${direction}`);
+      if (fontsize !== 'medium') params.push(`fontsize=${fontsize}`);
+      if (hidetime === 'true') params.push(`hidetime=true`);
       
       if (params.length > 0) {
         url += '?' + params.join('&');

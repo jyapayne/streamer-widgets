@@ -57,6 +57,22 @@ async def handle_root(request: web.Request) -> web.Response:
                         <option value="up">Up (bubbles up, newest anchored)</option>
                       </select>
                     </div>
+                    <div class="option-group">
+                      <label>Font Size</label>
+                      <select id="livechat-fontsize" onchange="updateLiveChatUrl()">
+                        <option value="small">Small</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="large">Large</option>
+                        <option value="xlarge">Extra Large</option>
+                      </select>
+                    </div>
+                    <div class="option-group">
+                      <label>Timestamp</label>
+                      <select id="livechat-hidetime" onchange="updateLiveChatUrl()">
+                        <option value="false">Show</option>
+                        <option value="true">Hide</option>
+                      </select>
+                    </div>
                   </div>
                 </li>
                 """

@@ -26,7 +26,7 @@ class Emote:
     url: str
     provider: str  # "twitch", "ffz", "bttv", "7tv", "youtube"
     is_animated: bool = False
-    scale: int = 1
+    emote_id: Optional[str] = None  # For dynamic resolution selection
 
 
 @dataclass
@@ -84,7 +84,7 @@ class ChatMessage:
                     "url": e.url,
                     "provider": e.provider,
                     "is_animated": e.is_animated,
-                    "scale": e.scale,
+                    "emote_id": e.emote_id,
                 }
                 for e in self.emotes
             ],

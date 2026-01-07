@@ -48,28 +48,28 @@ body.font-small {
   --chat-font-size: 12px;
   --chat-username-size: 12px;
   --chat-badge-size: 14px;
-  --chat-emote-size: 20px;
+  --chat-emote-size: 28px;
 }
 
 body.font-medium {
   --chat-font-size: 14px;
   --chat-username-size: 14px;
   --chat-badge-size: 16px;
-  --chat-emote-size: 24px;
+  --chat-emote-size: 36px;
 }
 
 body.font-large {
   --chat-font-size: 18px;
   --chat-username-size: 18px;
   --chat-badge-size: 20px;
-  --chat-emote-size: 32px;
+  --chat-emote-size: 48px;
 }
 
 body.font-xlarge {
   --chat-font-size: 24px;
   --chat-username-size: 24px;
   --chat-badge-size: 26px;
-  --chat-emote-size: 40px;
+  --chat-emote-size: 56px;
 }
 
 /* Hide timestamp option */

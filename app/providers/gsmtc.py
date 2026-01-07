@@ -80,14 +80,44 @@ def _pick_best_session(sessions: Any) -> Any:
 
 
 def _extract_album_from_artist(artist_raw: str) -> Tuple[str, str]:
+    """
+    Extract album info from artist string if embedded.
+    
+    Supports formats:
+    - "Artist [ALBUM:Album Name]" -> ("Artist", "Album Name")
+    - "Artist — Album Name" -> ("Artist", "Album Name")  (em dash)
+    - "Artist - Album Name" -> ("Artist", "Album Name")  (hyphen with spaces)
+    """
     if not artist_raw:
         return "", ""
+    
+    # First, check for [ALBUM:...] pattern
     m = re.search(r"\s*\[ALBUM:(.*?)\]\s*$", artist_raw, re.IGNORECASE)
-    if not m:
-        return artist_raw.strip(), ""
-    album_hint = m.group(1).strip()
-    clean_artist = artist_raw[: m.start()].strip()
-    return clean_artist, album_hint
+    if m:
+        album_hint = m.group(1).strip()
+        clean_artist = artist_raw[: m.start()].strip()
+        return clean_artist, album_hint
+    
+    # Check for em dash (—) or en dash (–) separator
+    for dash in ["—", "–"]:
+        if dash in artist_raw:
+            parts = artist_raw.split(dash, 1)
+            if len(parts) == 2:
+                artist = parts[0].strip()
+                album = parts[1].strip()
+                if artist and album:
+                    return artist, album
+    
+    # Check for spaced hyphen " - " separator (but not "Artist-Name")
+    if " - " in artist_raw:
+        parts = artist_raw.split(" - ", 1)
+        if len(parts) == 2:
+            artist = parts[0].strip()
+            album = parts[1].strip()
+            if artist and album:
+                return artist, album
+    
+    return artist_raw.strip(), ""
 
 
 async def run_gsmtc_provider(state: AppState) -> None:

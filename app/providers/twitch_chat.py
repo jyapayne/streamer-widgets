@@ -378,6 +378,7 @@ class TwitchChatClient:
                             code=code,
                             url=f"https://static-cdn.jtvnw.net/emoticons/v2/{emote_id}/default/dark/1.0",
                             provider="twitch",
+                            emote_id=emote_id,
                         )
                     )
 
@@ -431,11 +432,16 @@ class TwitchChatClient:
                     for set_id, set_data in data.get("sets", {}).items():
                         for emote in set_data.get("emoticons", []):
                             code = emote.get("name")
+                            emote_id = str(emote.get("id", ""))
                             urls = emote.get("urls", {})
-                            url = urls.get("4") or urls.get("2") or urls.get("1")
+                            # Use 1x as default, frontend will upgrade
+                            url = urls.get("1") or urls.get("2") or urls.get("4")
                             if code and url:
                                 self.global_emotes[code] = Emote(
-                                    code=code, url=f"https:{url}" if url.startswith("//") else url, provider="ffz"
+                                    code=code,
+                                    url=f"https:{url}" if url.startswith("//") else url,
+                                    provider="ffz",
+                                    emote_id=emote_id,
                                 )
                                 loaded_global += 1
             
@@ -448,11 +454,16 @@ class TwitchChatClient:
                     for set_id, set_data in data.get("sets", {}).items():
                         for emote in set_data.get("emoticons", []):
                             code = emote.get("name")
+                            emote_id = str(emote.get("id", ""))
                             urls = emote.get("urls", {})
-                            url = urls.get("4") or urls.get("2") or urls.get("1")
+                            # Use 1x as default, frontend will upgrade
+                            url = urls.get("1") or urls.get("2") or urls.get("4")
                             if code and url:
                                 self.channel_emotes[code] = Emote(
-                                    code=code, url=f"https:{url}" if url.startswith("//") else url, provider="ffz"
+                                    code=code,
+                                    url=f"https:{url}" if url.startswith("//") else url,
+                                    provider="ffz",
+                                    emote_id=emote_id,
                                 )
                                 loaded_channel += 1
             
@@ -562,6 +573,7 @@ class TwitchChatClient:
                     code=code,
                     url=f"https://cdn.betterttv.net/emote/{emote_id}/1x",
                     provider="bttv",
+                    emote_id=emote_id,
                 )
                 loaded += 1
         return loaded
@@ -589,6 +601,7 @@ class TwitchChatClient:
                                 code=code,
                                 url=f"https://cdn.betterttv.net/emote/{emote_id}/1x",
                                 provider="bttv",
+                                emote_id=emote_id,
                             )
                             loaded_global += 1
             
@@ -634,6 +647,7 @@ class TwitchChatClient:
                                 code=code,
                                 url=f"https://cdn.betterttv.net/emote/{emote_id}/1x",
                                 provider="bttv",
+                                emote_id=emote_id,
                             )
                             loaded_channel += 1
             
@@ -644,7 +658,7 @@ class TwitchChatClient:
             print(f"BTTV emote load error: {e}")
 
     def _get_7tv_emote_url(self, emote: dict) -> Optional[str]:
-        """Extract the correct URL from a 7TV emote object."""
+        """Extract the correct URL from a 7TV emote object (1x for frontend scaling)."""
         # Try to get from data.host structure (v3 API format)
         emote_data = emote.get("data", {})
         host = emote_data.get("host", {})
@@ -653,9 +667,14 @@ class TwitchChatClient:
             base_url = host.get("url", "")
             files = host.get("files", [])
             
-            # Find best quality webp file
+            # Use 1x as default, frontend will upgrade based on font size
             for f in files:
                 if f.get("name") == "1x.webp":
+                    return f"https:{base_url}/{f.get('name')}"
+            
+            # Fallback to 2x
+            for f in files:
+                if f.get("name") == "2x.webp":
                     return f"https:{base_url}/{f.get('name')}"
             
             # Fallback to first webp file
@@ -670,12 +689,19 @@ class TwitchChatClient:
         return None
 
     def _get_7tv_emote_url_v4(self, emote: dict) -> Optional[str]:
-        """Extract the correct URL from a 7TV v4 GraphQL emote object."""
+        """Extract the correct URL from a 7TV v4 GraphQL emote object (1x for frontend scaling)."""
         images = emote.get("images", [])
         
-        # Find 1x scale image
+        # Use 1x as default, frontend will upgrade based on font size
         for img in images:
             if img.get("scale") == 1:
+                url = img.get("url")
+                if url:
+                    return url if url.startswith("http") else f"https:{url}"
+        
+        # Fallback to 2x
+        for img in images:
+            if img.get("scale") == 2:
                 url = img.get("url")
                 if url:
                     return url if url.startswith("http") else f"https:{url}"
@@ -804,6 +830,7 @@ class TwitchChatClient:
         loaded = 0
         for emote in emotes:
             code = emote.get("defaultName")
+            emote_id = emote.get("id")
             if code and code not in self.global_emotes:
                 url = self._get_7tv_emote_url_v4(emote)
                 if url:
@@ -815,6 +842,7 @@ class TwitchChatClient:
                             img.get("frameCount", 1) > 1 
                             for img in emote.get("images", [])
                         ),
+                        emote_id=emote_id,
                     )
                     loaded += 1
         return loaded
@@ -836,6 +864,7 @@ class TwitchChatClient:
                     data = await resp.json()
                     for emote in data.get("emotes", []):
                         code = emote.get("name")
+                        emote_id = emote.get("id")
                         url = self._get_7tv_emote_url(emote)
                         if code and url:
                             emote_data = emote.get("data", {})
@@ -844,6 +873,7 @@ class TwitchChatClient:
                                 url=url,
                                 provider="7tv",
                                 is_animated=emote_data.get("animated", False),
+                                emote_id=emote_id,
                             )
                             loaded_global += 1
             
@@ -889,6 +919,7 @@ class TwitchChatClient:
                     emote_set = data.get("emote_set", {})
                     for emote in emote_set.get("emotes", []):
                         code = emote.get("name")
+                        emote_id = emote.get("id")
                         url = self._get_7tv_emote_url(emote)
                         if code and url:
                             emote_data = emote.get("data", {})
@@ -896,6 +927,7 @@ class TwitchChatClient:
                                 code=code,
                                 url=url,
                                 provider="7tv",
+                                emote_id=emote_id,
                                 is_animated=emote_data.get("animated", False),
                             )
                             loaded_channel += 1

@@ -28,8 +28,12 @@ class LiveChatWidget {
     }
 
     // Font size: small, medium (default), large, xlarge
-    const fontSize = urlParams.get('fontsize') || 'medium';
-    document.body.classList.add(`font-${fontSize}`);
+    this.fontSize = urlParams.get('fontsize') || 'medium';
+    document.body.classList.add(`font-${this.fontSize}`);
+    
+    // Emote resolution based on font size
+    // Small/Medium: 1x (28px), Large: 2x (56px), XLarge: 2x (56px)
+    this.emoteScale = (this.fontSize === 'medium' || this.fontSize === 'large' || this.fontSize === 'xlarge') ? 2 : 1;
 
     // Hide timestamp option
     const hideTime = urlParams.get('hidetime');
@@ -227,6 +231,39 @@ class LiveChatWidget {
     return msg;
   }
 
+  getEmoteUrl(emote) {
+    // If no emote_id, use the default URL
+    if (!emote.emote_id) {
+      return emote.url;
+    }
+
+    const scale = this.emoteScale;
+    const provider = emote.provider;
+
+    // Upgrade URL based on provider and scale
+    switch (provider) {
+      case 'twitch':
+        // Twitch: 1.0, 2.0, 3.0
+        return `https://static-cdn.jtvnw.net/emoticons/v2/${emote.emote_id}/default/dark/${scale}.0`;
+      
+      case 'bttv':
+        // BTTV: 1x, 2x, 3x
+        return `https://cdn.betterttv.net/emote/${emote.emote_id}/${scale}x`;
+      
+      case 'ffz':
+        // FFZ: 1, 2, 4 (no 3x)
+        const ffzScale = scale === 2 ? 2 : 1;
+        return emote.url.replace(/\/[124]$/, `/${ffzScale}`);
+      
+      case '7tv':
+        // 7TV: 1x.webp, 2x.webp, 3x.webp
+        return emote.url.replace(/\/[123]x\.webp$/, `/${scale}x.webp`);
+      
+      default:
+        return emote.url;
+    }
+  }
+
   parseMessageWithEmotes(message, emotes) {
     if (!emotes || emotes.length === 0) {
       return this.escapeHtml(message);
@@ -244,7 +281,8 @@ class LiveChatWidget {
       if (emoteMap[word]) {
         const emote = emoteMap[word];
         const animatedClass = emote.is_animated ? 'animated' : '';
-        return `<img class="emote ${animatedClass}" src="${emote.url}" alt="${emote.code}" title="${emote.code} (${emote.provider})">`;
+        const url = this.getEmoteUrl(emote);
+        return `<img class="emote ${animatedClass}" src="${url}" alt="${emote.code}" title="${emote.code} (${emote.provider})">`;
       }
       return this.escapeHtml(word);
     });

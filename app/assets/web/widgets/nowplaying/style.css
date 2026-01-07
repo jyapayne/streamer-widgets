@@ -139,7 +139,7 @@ html, body {
   flex-direction: column;
   justify-content: center;
   min-width: 0;
-  gap: 6px;
+  gap: 3px;
   padding-right: clamp(8px, calc(var(--w) * 0.02), 14px);
   flex: 1;
 }
@@ -156,36 +156,30 @@ html, body {
   text-shadow: 0 2px 10px rgba(0,0,0,.25);
 }
 
-.sub{
+.artist{
   color: var(--muted);
   font-size: 15px;
-  display:flex;
-  gap: 8px;
-  align-items: center;
-  min-width: 0;
-}
-.sub span.artist{
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 0 1 auto; /* shrinking is ok, growing beyond content isn't forced */
   min-width: 0;
-  max-width: 60%; /* prevent it from starving the album entirely if very long */
+  max-width: 100%;
 }
-.sub span.album{
+
+.album{
+  color: var(--muted);
+  font-size: 13px;
+  opacity: 0.8;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 1; /* takes remaining space */
   min-width: 0;
-}
-.dot{
-  opacity: .7;
-  flex: 0 0 auto;
+  max-width: 100%;
+  font-style: italic;
 }
 
 .statusRow{
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .pill{
